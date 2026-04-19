@@ -1,0 +1,173 @@
+# Dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Test Results
+test-results/
+playwright-report/
+allure-results/
+allure-report/
+coverage/
+junit-reports/
+screenshots/
+videos/
+traces/
+
+# Environment Variables
+.env
+.env.local
+.env.*.local
+.env.development
+.env.staging
+.env.production
+
+# IDE
+.vscode/settings.json
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# Runtime data
+pids/
+*.pid
+*.seed
+*.pid.lock
+
+# Build outputs
+dist/
+build/
+out/
+.next/
+.nuxt/
+.cache/
+
+# Temporary files
+tmp/
+temp/
+.tmp/
+
+# Docker
+.docker/
+docker-compose.override.yml
+
+# Kubernetes
+*.kubeconfig
+kubeconfig
+
+# Terraform
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.lock.hcl
+terraform.tfvars
+*.tfvars
+
+# Secrets and certificates
+secrets/
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Compiled binaries
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Archives
+*.zip
+*.tar.gz
+*.rar
+
+# Package files
+*.jar
+*.war
+*.nar
+*.ear
+*.zip
+*.tar.gz
+*.rar
+
+# JetBrains IDEs
+.idea/
+*.iws
+*.iml
+*.ipr
+
+# Eclipse
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+
+# NetBeans
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+
+# VS Code
+.vscode/
+!.vscode/extensions.json
+!.vscode/launch.json
+!.vscode/tasks.json
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# Vim
+*.swp
+*.swo
+*~
+
+# Emacs
+*~
+\#*\#
+/.emacs.desktop
+/.emacs.desktop.lock
+*.elc
+auto-save-list
+tramp
+.\#*
+
+# System Files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db

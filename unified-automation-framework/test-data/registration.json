@@ -1,0 +1,306 @@
+{
+  "validUsers": [
+    {
+      "testId": "REG_VALID_001",
+      "description": "Valid user registration with all required fields",
+      "gender": "Male",
+      "firstName": "John",
+      "lastName": "Doe",
+      "email": "john.doe.{{timestamp}}@testmail.com",
+      "password": "Test@123456",
+      "confirmPassword": "Test@123456",
+      "expectedResult": "success"
+    },
+    {
+      "testId": "REG_VALID_002", 
+      "description": "Valid female user registration",
+      "gender": "Female",
+      "firstName": "Jane",
+      "lastName": "Smith",
+      "email": "jane.smith.{{timestamp}}@testmail.com",
+      "password": "SecurePass@789",
+      "confirmPassword": "SecurePass@789",
+      "expectedResult": "success"
+    },
+    {
+      "testId": "REG_VALID_003",
+      "description": "Valid user with minimum length names",
+      "gender": "Male",
+      "firstName": "A",
+      "lastName": "B",
+      "email": "a.b.{{timestamp}}@test.com",
+      "password": "Min@Pass1",
+      "confirmPassword": "Min@Pass1",
+      "expectedResult": "success"
+    },
+    {
+      "testId": "REG_VALID_004",
+      "description": "Valid user with maximum length names",
+      "gender": "Female",
+      "firstName": "VeryLongFirstNameThatIsStillValidForRegistration",
+      "lastName": "VeryLongLastNameThatIsStillValidForRegistration",
+      "email": "verylongname.{{timestamp}}@testdomain.com",
+      "password": "LongPassword@123456789",
+      "confirmPassword": "LongPassword@123456789",
+      "expectedResult": "success"
+    },
+    {
+      "testId": "REG_VALID_005",
+      "description": "Valid user with special characters in name",
+      "gender": "Male",
+      "firstName": "Jean-Pierre",
+      "lastName": "O'Connor",
+      "email": "jean.pierre.{{timestamp}}@email.com",
+      "password": "Special@Char123",
+      "confirmPassword": "Special@Char123",
+      "expectedResult": "success"
+    }
+  ],
+  "invalidUsers": [
+    {
+      "testId": "REG_INVALID_001",
+      "description": "Empty first name field",
+      "gender": "Male",
+      "firstName": "",
+      "lastName": "Doe",
+      "email": "empty.firstname.{{timestamp}}@test.com",
+      "password": "Test@123456",
+      "confirmPassword": "Test@123456",
+      "expectedResult": "error",
+      "expectedError": "First name is required"
+    },
+    {
+      "testId": "REG_INVALID_002",
+      "description": "Empty last name field",
+      "gender": "Female",
+      "firstName": "Jane",
+      "lastName": "",
+      "email": "empty.lastname.{{timestamp}}@test.com",
+      "password": "Test@123456",
+      "confirmPassword": "Test@123456",
+      "expectedResult": "error",
+      "expectedError": "Last name is required"
+    },
+    {
+      "testId": "REG_INVALID_003",
+      "description": "Empty email field",
+      "gender": "Male",
+      "firstName": "John",
+      "lastName": "Doe",
+      "email": "",
+      "password": "Test@123456",
+      "confirmPassword": "Test@123456",
+      "expectedResult": "error",
+      "expectedError": "Email is required"
+    },
+    {
+      "testId": "REG_INVALID_004",
+      "description": "Invalid email format - missing @",
+      "gender": "Female",
+      "firstName": "Jane",
+      "lastName": "Smith",
+      "email": "invalid.email.com",
+      "password": "Test@123456",
+      "confirmPassword": "Test@123456",
+      "expectedResult": "error",
+      "expectedError": "Wrong email"
+    },
+    {
+      "testId": "REG_INVALID_005",
+      "description": "Invalid email format - missing domain",
+      "gender": "Male",
+      "firstName": "John",
+      "lastName": "Doe",
+      "email": "invalid@",
+      "password": "Test@123456",
+      "confirmPassword": "Test@123456",
+      "expectedResult": "error",
+      "expectedError": "Wrong email"
+    },
+    {
+      "testId": "REG_INVALID_006",
+      "description": "Invalid email format - special characters",
+      "gender": "Female",
+      "firstName": "Jane",
+      "lastName": "Smith",
+      "email": "invalid..email@test.com",
+      "password": "Test@123456",
+      "confirmPassword": "Test@123456",
+      "expectedResult": "error",
+      "expectedError": "Wrong email"
+    },
+    {
+      "testId": "REG_INVALID_007",
+      "description": "Empty password field",
+      "gender": "Male",
+      "firstName": "John",
+      "lastName": "Doe",
+      "email": "empty.password.{{timestamp}}@test.com",
+      "password": "",
+      "confirmPassword": "",
+      "expectedResult": "error",
+      "expectedError": "Password is required"
+    },
+    {
+      "testId": "REG_INVALID_008",
+      "description": "Password too short (less than 6 characters)",
+      "gender": "Female",
+      "firstName": "Jane",
+      "lastName": "Smith",
+      "email": "short.password.{{timestamp}}@test.com",
+      "password": "12345",
+      "confirmPassword": "12345",
+      "expectedResult": "error",
+      "expectedError": "The password should have at least 6 characters"
+    },
+    {
+      "testId": "REG_INVALID_009",
+      "description": "Password confirmation mismatch",
+      "gender": "Male",
+      "firstName": "John",
+      "lastName": "Doe",
+      "email": "password.mismatch.{{timestamp}}@test.com",
+      "password": "Test@123456",
+      "confirmPassword": "Different@123456",
+      "expectedResult": "error",
+      "expectedError": "The password and confirmation password do not match"
+    },
+    {
+      "testId": "REG_INVALID_010",
+      "description": "Duplicate email registration",
+      "gender": "Female",
+      "firstName": "Jane",
+      "lastName": "Smith",
+      "email": "duplicate@test.com",
+      "password": "Test@123456",
+      "confirmPassword": "Test@123456",
+      "expectedResult": "error",
+      "expectedError": "The specified email already exists"
+    }
+  ],
+  "edgeCases": [
+    {
+      "testId": "REG_EDGE_001",
+      "description": "SQL Injection attempt in first name",
+      "gender": "Male",
+      "firstName": "'; DROP TABLE users; --",
+      "lastName": "Hacker",
+      "email": "sql.injection.{{timestamp}}@test.com",
+      "password": "Test@123456",
+      "confirmPassword": "Test@123456",
+      "expectedResult": "error",
+      "expectedError": "Invalid characters in name"
+    },
+    {
+      "testId": "REG_EDGE_002",
+      "description": "XSS attempt in last name",
+      "gender": "Female",
+      "firstName": "Jane",
+      "lastName": "<script>alert('XSS')</script>",
+      "email": "xss.attempt.{{timestamp}}@test.com",
+      "password": "Test@123456",
+      "confirmPassword": "Test@123456",
+      "expectedResult": "error",
+      "expectedError": "Invalid characters in name"
+    },
+    {
+      "testId": "REG_EDGE_003",
+      "description": "Very long email address (over 254 characters)",
+      "gender": "Male",
+      "firstName": "John",
+      "lastName": "Doe",
+      "email": "verylongemailaddressthatexceedsthemaximumlengthallowedforemailaddressesaccordingtorfc5321whichspecifiesthatthemaximumlengthofanemailaddressis254charactersincludingthelocalpartanddomainpartthisemailaddressisdesignedtotesttheedgecasevalidation@testdomain.com",
+      "password": "Test@123456",
+      "confirmPassword": "Test@123456",
+      "expectedResult": "error",
+      "expectedError": "Email address too long"
+    },
+    {
+      "testId": "REG_EDGE_004",
+      "description": "Unicode characters in name fields",
+      "gender": "Female",
+      "firstName": "José",
+      "lastName": "Müller",
+      "email": "unicode.name.{{timestamp}}@test.com",
+      "password": "Test@123456",
+      "confirmPassword": "Test@123456",
+      "expectedResult": "success"
+    },
+    {
+      "testId": "REG_EDGE_005",
+      "description": "Leading and trailing spaces in fields",
+      "gender": "Male",
+      "firstName": "  John  ",
+      "lastName": "  Doe  ",
+      "email": "  spaces.{{timestamp}}@test.com  ",
+      "password": "  Test@123456  ",
+      "confirmPassword": "  Test@123456  ",
+      "expectedResult": "success"
+    },
+    {
+      "testId": "REG_EDGE_006",
+      "description": "Numeric characters in name fields",
+      "gender": "Female",
+      "firstName": "Jane123",
+      "lastName": "Smith456",
+      "email": "numeric.names.{{timestamp}}@test.com",
+      "password": "Test@123456",
+      "confirmPassword": "Test@123456",
+      "expectedResult": "success"
+    },
+    {
+      "testId": "REG_EDGE_007",
+      "description": "Password with only numbers",
+      "gender": "Male",
+      "firstName": "John",
+      "lastName": "Doe",
+      "email": "numeric.password.{{timestamp}}@test.com",
+      "password": "123456789",
+      "confirmPassword": "123456789",
+      "expectedResult": "success"
+    },
+    {
+      "testId": "REG_EDGE_008",
+      "description": "Password with special characters only",
+      "gender": "Female",
+      "firstName": "Jane",
+      "lastName": "Smith",
+      "email": "special.password.{{timestamp}}@test.com",
+      "password": "!@#$%^&*()",
+      "confirmPassword": "!@#$%^&*()",
+      "expectedResult": "success"
+    }
+  ],
+  "performanceTests": [
+    {
+      "testId": "REG_PERF_001",
+      "description": "Bulk user registration - 100 users",
+      "userCount": 100,
+      "expectedResult": "success",
+      "maxResponseTime": 5000
+    },
+    {
+      "testId": "REG_PERF_002",
+      "description": "Concurrent user registration - 10 simultaneous",
+      "concurrentUsers": 10,
+      "expectedResult": "success",
+      "maxResponseTime": 3000
+    }
+  ],
+  "securityTests": [
+    {
+      "testId": "REG_SEC_001",
+      "description": "CSRF token validation",
+      "testType": "csrf",
+      "expectedResult": "protected"
+    },
+    {
+      "testId": "REG_SEC_002",
+      "description": "Rate limiting validation",
+      "testType": "rateLimiting",
+      "requestCount": 100,
+      "timeWindow": 60,
+      "expectedResult": "blocked"
+    }
+  ]
+}

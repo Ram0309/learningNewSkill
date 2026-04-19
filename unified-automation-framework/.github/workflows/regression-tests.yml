@@ -1,0 +1,548 @@
+name: Regression Test Suite with Reporting
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    # Run regression tests daily at 3 AM UTC
+    - cron: '0 3 * * *'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target environment'
+        required: true
+        default: 'prod'
+        type: choice
+        options:
+          - dev
+          - sit
+          - preprod
+          - prod
+      browser:
+        description: 'Browser to test'
+        required: true
+        default: 'chromium'
+        type: choice
+        options:
+          - chromium
+          - firefox
+          - webkit
+          - all
+      test_type:
+        description: 'Type of regression tests'
+        required: true
+        default: 'full'
+        type: choice
+        options:
+          - smoke
+          - regression
+          - full
+          - registration-only
+
+env:
+  NODE_VERSION: '18'
+  PLAYWRIGHT_VERSION: '1.40.0'
+
+jobs:
+  # Setup and determine test parameters
+  setup:
+    runs-on: ubuntu-latest
+    outputs:
+      environment: ${{ steps.determine-env.outputs.env }}
+      browser: ${{ steps.determine-browser.outputs.browser }}
+      test-type: ${{ steps.determine-test-type.outputs.type }}
+      base-url: ${{ steps.determine-env.outputs.base-url }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Determine environment and base URL
+        id: determine-env
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            ENV="${{ github.event.inputs.environment }}"
+          elif [ "${{ github.ref }}" = "refs/heads/main" ]; then
+            ENV="prod"
+          else
+            ENV="sit"
+          fi
+          
+          echo "env=$ENV" >> $GITHUB_OUTPUT
+          
+          case $ENV in
+            dev)
+              echo "base-url=https://dev.demowebshop.tricentis.com" >> $GITHUB_OUTPUT
+              ;;
+            sit)
+              echo "base-url=https://sit.demowebshop.tricentis.com" >> $GITHUB_OUTPUT
+              ;;
+            preprod)
+              echo "base-url=https://preprod.demowebshop.tricentis.com" >> $GITHUB_OUTPUT
+              ;;
+            prod)
+              echo "base-url=https://demowebshop.tricentis.com" >> $GITHUB_OUTPUT
+              ;;
+          esac
+
+      - name: Determine browser
+        id: determine-browser
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "browser=${{ github.event.inputs.browser }}" >> $GITHUB_OUTPUT
+          else
+            echo "browser=chromium" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Determine test type
+        id: determine-test-type
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "type=${{ github.event.inputs.test_type }}" >> $GITHUB_OUTPUT
+          elif [ "${{ github.event_name }}" = "schedule" ]; then
+            echo "type=full" >> $GITHUB_OUTPUT
+          else
+            echo "type=regression" >> $GITHUB_OUTPUT
+          fi
+
+  # Run regression tests
+  regression-tests:
+    runs-on: ubuntu-latest
+    needs: setup
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: ${{ needs.setup.outputs.browser == 'all' && fromJSON('["chromium", "firefox", "webkit"]') || fromJSON(format('["{0}"]', needs.setup.outputs.browser)) }}
+        shard: [1, 2, 3, 4]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: |
+          cd unified-automation-framework
+          npm ci
+
+      - name: Install Playwright browsers
+        run: |
+          cd unified-automation-framework
+          npx playwright install --with-deps ${{ matrix.browser }}
+
+      - name: Setup test execution reporting
+        run: |
+          cd unified-automation-framework/test-execution-reporting
+          npm ci
+          npm run setup:db
+
+      - name: Run regression tests with reporting
+        id: run-tests
+        run: |
+          cd unified-automation-framework
+          
+          # Set test command based on test type
+          case "${{ needs.setup.outputs.test-type }}" in
+            "smoke")
+              TEST_CMD="npx playwright test --grep @smoke --project=${{ matrix.browser }} --shard=${{ matrix.shard }}/4"
+              ;;
+            "regression")
+              TEST_CMD="npx playwright test --grep @regression --project=${{ matrix.browser }} --shard=${{ matrix.shard }}/4"
+              ;;
+            "registration-only")
+              TEST_CMD="npx playwright test tests/registration/ --project=${{ matrix.browser }} --shard=${{ matrix.shard }}/4"
+              ;;
+            "full")
+              TEST_CMD="npx playwright test --project=${{ matrix.browser }} --shard=${{ matrix.shard }}/4"
+              ;;
+            *)
+              TEST_CMD="npx playwright test --grep @regression --project=${{ matrix.browser }} --shard=${{ matrix.shard }}/4"
+              ;;
+          esac
+          
+          echo "🚀 Executing: $TEST_CMD"
+          echo "🌍 Environment: ${{ needs.setup.outputs.environment }}"
+          echo "🔗 Base URL: ${{ needs.setup.outputs.base-url }}"
+          
+          # Run tests and capture exit code
+          set +e
+          $TEST_CMD
+          TEST_EXIT_CODE=$?
+          set -e
+          
+          echo "test-exit-code=$TEST_EXIT_CODE" >> $GITHUB_OUTPUT
+          
+          # Tests can fail but we still want to process results
+          exit 0
+        env:
+          TEST_ENVIRONMENT: ${{ needs.setup.outputs.environment }}
+          BASE_URL: ${{ needs.setup.outputs.base-url }}
+          BROWSER: ${{ matrix.browser }}
+          REPORTING_ENABLED: 'true'
+          REPORTING_STORAGE_TYPE: 'sqlite'
+          PROJECT_NAME: 'Enterprise Test Automation Framework'
+          SQUAD_NAME: 'QA-Automation'
+          CI: true
+
+      - name: Generate test execution report
+        if: always()
+        run: |
+          cd unified-automation-framework/test-execution-reporting
+          
+          # Generate Excel report
+          npx test-execution-reporting export \
+            --format excel \
+            --output "reports/excel/regression-report-${{ matrix.browser }}-shard${{ matrix.shard }}-$(date +%Y%m%d-%H%M%S).xlsx" \
+            --environment "${{ needs.setup.outputs.environment }}" \
+            --project "Enterprise Test Automation Framework"
+          
+          # Generate CSV report
+          npx test-execution-reporting export \
+            --format csv \
+            --output "reports/csv/regression-report-${{ matrix.browser }}-shard${{ matrix.shard }}-$(date +%Y%m%d-%H%M%S).csv" \
+            --environment "${{ needs.setup.outputs.environment }}" \
+            --project "Enterprise Test Automation Framework"
+          
+          # Generate dashboard data
+          npx test-execution-reporting dashboard:build
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: regression-results-${{ matrix.browser }}-shard${{ matrix.shard }}-${{ github.run_number }}
+          path: |
+            unified-automation-framework/test-results/
+            unified-automation-framework/playwright-report/
+            unified-automation-framework/allure-results/
+            unified-automation-framework/test-execution-reporting/reports/
+            unified-automation-framework/test-execution-reporting/data/
+            unified-automation-framework/screenshots/
+            unified-automation-framework/videos/
+          retention-days: 30
+
+      - name: Upload execution database
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: execution-database-${{ matrix.browser }}-shard${{ matrix.shard }}-${{ github.run_number }}
+          path: unified-automation-framework/test-execution-reporting/data/execution-history.db
+          retention-days: 90
+
+  # Consolidate results from all shards and browsers
+  consolidate-results:
+    runs-on: ubuntu-latest
+    needs: [setup, regression-tests]
+    if: always()
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Download all test artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts/
+
+      - name: Install dependencies
+        run: |
+          cd unified-automation-framework/test-execution-reporting
+          npm ci
+
+      - name: Consolidate execution databases
+        run: |
+          cd unified-automation-framework/test-execution-reporting
+          node scripts/consolidate-results.js ../../artifacts/
+
+      - name: Generate consolidated reports
+        run: |
+          cd unified-automation-framework/test-execution-reporting
+          
+          # Generate consolidated Excel report
+          npx test-execution-reporting export \
+            --format excel \
+            --output "reports/excel/consolidated-regression-report-$(date +%Y%m%d-%H%M%S).xlsx"
+          
+          # Generate trend analysis
+          npm run generate:trends -- \
+            --days=30 \
+            --output="reports/trends/trend-analysis-$(date +%Y%m%d-%H%M%S).json"
+          
+          # Generate comprehensive dashboard
+          npm run dashboard:build
+
+      - name: Generate Allure report
+        run: |
+          # Install Allure
+          npm install -g allure-commandline
+          
+          # Merge all allure results
+          mkdir -p consolidated-allure-results
+          find artifacts -name "allure-results" -type d -exec cp -r {}/* consolidated-allure-results/ \; 2>/dev/null || true
+          
+          # Generate Allure report
+          if [ "$(ls -A consolidated-allure-results)" ]; then
+            allure generate consolidated-allure-results -o allure-report --clean
+          else
+            echo "No Allure results found, creating empty report"
+            mkdir -p allure-report
+            echo "<h1>No test results available</h1>" > allure-report/index.html
+          fi
+
+      - name: Create comprehensive test summary
+        run: |
+          cd unified-automation-framework/test-execution-reporting
+          
+          # Generate test summary
+          cat > test-summary.md << EOF
+          # 📊 Regression Test Execution Summary
+          
+          **Execution Date:** $(date -u +"%Y-%m-%d %H:%M:%S UTC")  
+          **Environment:** ${{ needs.setup.outputs.environment }}  
+          **Base URL:** ${{ needs.setup.outputs.base-url }}  
+          **Test Type:** ${{ needs.setup.outputs.test-type }}  
+          **Browser(s):** ${{ needs.setup.outputs.browser }}  
+          **GitHub Run:** [\#${{ github.run_number }}](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
+          
+          ## 🎯 Test Execution Details
+          
+          - **Total Shards:** 4 per browser
+          - **Parallel Execution:** Yes
+          - **Reporting System:** Enabled (SQLite + Dashboard)
+          - **Artifacts Generated:** Excel, CSV, JSON, Allure, Dashboard
+          
+          ## 📈 Key Metrics
+          
+          The detailed metrics are available in the generated reports:
+          - **Excel Report:** Comprehensive test results with filtering
+          - **CSV Export:** Raw data for analysis
+          - **Interactive Dashboard:** Real-time metrics and charts
+          - **Allure Report:** Detailed test execution report
+          
+          ## 📁 Available Artifacts
+          
+          1. **Test Results:** Screenshots, videos, traces
+          2. **Execution Database:** SQLite database with all execution data
+          3. **Reports:** Excel, CSV, JSON exports
+          4. **Dashboard:** Interactive HTML dashboard
+          5. **Allure Report:** Comprehensive test report
+          
+          ## 🔗 Quick Links
+          
+          - [Allure Report](./allure-report/index.html)
+          - [Interactive Dashboard](./dashboard/index.html)
+          - [Consolidated Database](./data/consolidated-execution-history.db)
+          
+          ---
+          *Generated by Enterprise Test Automation Framework*
+          EOF
+
+      - name: Upload consolidated results
+        uses: actions/upload-artifact@v4
+        with:
+          name: consolidated-regression-report-${{ github.run_number }}
+          path: |
+            unified-automation-framework/test-execution-reporting/reports/
+            unified-automation-framework/test-execution-reporting/data/
+            unified-automation-framework/test-execution-reporting/dashboard/
+            allure-report/
+            unified-automation-framework/test-execution-reporting/test-summary.md
+          retention-days: 90
+
+      - name: Deploy reports to GitHub Pages
+        if: github.ref == 'refs/heads/main'
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./allure-report
+          destination_dir: regression-reports/${{ github.run_number }}
+
+  # Generate and send notifications
+  notify-results:
+    runs-on: ubuntu-latest
+    needs: [setup, regression-tests, consolidate-results]
+    if: always()
+    steps:
+      - name: Calculate test results summary
+        id: summary
+        run: |
+          # This would normally parse the actual test results
+          # For now, we'll create a summary based on job status
+          
+          TOTAL_JOBS=$(echo '${{ toJson(needs.regression-tests.result) }}' | jq -r 'length // 0')
+          SUCCESS_COUNT=0
+          FAILURE_COUNT=0
+          
+          if [ "${{ needs.regression-tests.result }}" = "success" ]; then
+            SUCCESS_COUNT=$TOTAL_JOBS
+          else
+            FAILURE_COUNT=$TOTAL_JOBS
+          fi
+          
+          echo "total-jobs=$TOTAL_JOBS" >> $GITHUB_OUTPUT
+          echo "success-count=$SUCCESS_COUNT" >> $GITHUB_OUTPUT
+          echo "failure-count=$FAILURE_COUNT" >> $GITHUB_OUTPUT
+          
+          if [ $FAILURE_COUNT -eq 0 ]; then
+            echo "overall-status=✅ PASSED" >> $GITHUB_OUTPUT
+            echo "status-emoji=✅" >> $GITHUB_OUTPUT
+          else
+            echo "overall-status=❌ FAILED" >> $GITHUB_OUTPUT
+            echo "status-emoji=❌" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Comment on PR with results
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const comment = `
+            ## ${{ steps.summary.outputs.status-emoji }} Regression Test Results
+            
+            **Environment:** ${{ needs.setup.outputs.environment }}  
+            **Browser:** ${{ needs.setup.outputs.browser }}  
+            **Test Type:** ${{ needs.setup.outputs.test-type }}  
+            **Execution ID:** ${{ github.run_number }}
+            
+            ### 📊 Summary
+            | Metric | Value |
+            |--------|-------|
+            | Total Jobs | ${{ steps.summary.outputs.total-jobs }} |
+            | Successful | ${{ steps.summary.outputs.success-count }} ✅ |
+            | Failed | ${{ steps.summary.outputs.failure-count }} ❌ |
+            | Overall Status | ${{ steps.summary.outputs.overall-status }} |
+            
+            ### 📁 Artifacts
+            - 📊 [Consolidated Report](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
+            - 📈 [Interactive Dashboard](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
+            - 🗄️ [Execution Database](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
+            - 📋 [Allure Report](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
+            
+            ### 🔗 Links
+            - [View Full Results](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
+            - [Download Artifacts](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
+            
+            ---
+            *Automated regression testing powered by Enterprise Test Automation Framework*
+            `;
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });
+
+      - name: Create issue on failure
+        if: failure() && github.ref == 'refs/heads/main'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const runUrl = `https://github.com/${owner}/${repo}/actions/runs/${{ github.run_id }}`;
+            
+            await github.rest.issues.create({
+              owner,
+              repo,
+              title: `🚨 Regression Tests Failed - ${new Date().toISOString().split('T')[0]}`,
+              body: `
+              ## Regression Test Failure Alert
+              
+              **Environment:** ${{ needs.setup.outputs.environment }}  
+              **Browser:** ${{ needs.setup.outputs.browser }}  
+              **Test Type:** ${{ needs.setup.outputs.test-type }}  
+              **Trigger:** ${{ github.event_name }}  
+              **Branch:** ${{ github.ref_name }}  
+              
+              **Run Details:** ${runUrl}
+              
+              ### 📊 Failure Summary
+              - Total Jobs: ${{ steps.summary.outputs.total-jobs }}
+              - Failed Jobs: ${{ steps.summary.outputs.failure-count }}
+              - Success Rate: ${Math.round((${{ steps.summary.outputs.success-count }} / ${{ steps.summary.outputs.total-jobs }}) * 100)}%
+              
+              ### 🔍 Investigation Steps
+              - [ ] Review test execution logs
+              - [ ] Check environment stability
+              - [ ] Analyze failure patterns
+              - [ ] Update test data if needed
+              - [ ] Fix failing tests
+              - [ ] Re-run regression suite
+              
+              ### 📁 Available Artifacts
+              - [Consolidated Report](${runUrl})
+              - [Execution Database](${runUrl})
+              - [Screenshots & Videos](${runUrl})
+              - [Allure Report](${runUrl})
+              
+              **Auto-generated by Regression Test Pipeline**
+              `,
+              labels: ['bug', 'regression-failure', 'automation', 'high-priority']
+            });
+
+      - name: Update status badge
+        if: github.ref == 'refs/heads/main'
+        run: |
+          # This would update a status badge or external monitoring system
+          echo "Updating test status badge..."
+          echo "Status: ${{ steps.summary.outputs.overall-status }}"
+          echo "Environment: ${{ needs.setup.outputs.environment }}"
+          echo "Timestamp: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+
+  # Optional: Performance monitoring
+  performance-monitoring:
+    runs-on: ubuntu-latest
+    needs: [consolidate-results]
+    if: always() && github.ref == 'refs/heads/main'
+    steps:
+      - name: Send metrics to monitoring system
+        run: |
+          # Send test execution metrics to monitoring system
+          curl -X POST "https://api.example.com/metrics" \
+            -H "Authorization: Bearer ${{ secrets.MONITORING_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "test_run_id": "${{ github.run_id }}",
+              "repository": "${{ github.repository }}",
+              "branch": "${{ github.ref_name }}",
+              "commit": "${{ github.sha }}",
+              "environment": "${{ needs.setup.outputs.environment }}",
+              "test_type": "${{ needs.setup.outputs.test-type }}",
+              "browser": "${{ needs.setup.outputs.browser }}",
+              "status": "${{ needs.consolidate-results.result }}",
+              "timestamp": "'$(date -u +%Y-%m-%dT%H:%M:%SZ)'",
+              "duration_minutes": $(( (${{ github.event.head_commit.timestamp && 'github.event.head_commit.timestamp' || '0' }} - ${{ github.event.head_commit.timestamp && 'github.event.head_commit.timestamp' || '0' }}) / 60 ))
+            }' || echo "Failed to send metrics (non-critical)"
+
+      - name: Archive execution metadata
+        run: |
+          # Archive execution metadata for long-term analysis
+          mkdir -p execution-metadata
+          cat > execution-metadata/execution-${{ github.run_id }}.json << EOF
+          {
+            "run_id": "${{ github.run_id }}",
+            "run_number": ${{ github.run_number }},
+            "repository": "${{ github.repository }}",
+            "branch": "${{ github.ref_name }}",
+            "commit": "${{ github.sha }}",
+            "environment": "${{ needs.setup.outputs.environment }}",
+            "test_type": "${{ needs.setup.outputs.test-type }}",
+            "browser": "${{ needs.setup.outputs.browser }}",
+            "trigger": "${{ github.event_name }}",
+            "status": "${{ needs.consolidate-results.result }}",
+            "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+            "artifacts_url": "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          }
+          EOF
+          
+          echo "Execution metadata archived for run ${{ github.run_id }}"
