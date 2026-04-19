@@ -1,23 +1,9 @@
 # Enterprise Test Automation Framework
 
-## Overview
-A comprehensive enterprise-grade test automation framework designed for scalable automation testing with microservices architecture, plugin-based extensibility, and comprehensive test execution reporting capabilities. Built with Playwright and TypeScript, designed for Fortune 500 companies with requirements for scalability, maintainability, and rapid onboarding.
-
-This system supports 1000+ parallel test executions across multi-tenant projects with complete layered architecture and advanced reporting dashboard.
+A comprehensive, enterprise-grade test automation framework built with Playwright and TypeScript, designed for Fortune 500 companies with requirements for scalability, maintainability, and rapid onboarding.
 
 ## 🚀 **Key Features**
 
-### Architecture Highlights
-- **Microservices Architecture**: Distributed services with independent scaling
-- **Plugin-Based Extensibility**: Modular plugin system for custom integrations
-- **Layered Design**: Test → Business → Service → Core Utilities layers
-- **Multi-Tenant Support**: Complete project isolation with shared infrastructure
-- **Massive Parallel Execution**: 1000+ concurrent test execution capability
-- **Container-Native**: Docker + Kubernetes orchestration with auto-scaling
-- **AI-Enhanced**: Intelligent test generation, maintenance, and analysis
-- **Comprehensive Reporting**: Real-time dashboard with advanced analytics
-
-### Core Testing Capabilities
 - **Enterprise Architecture**: Microservices-based with plugin system
 - **Multi-Layer Design**: Test → Business → Service → Core Utilities
 - **Multi-Tenant Support**: Isolated testing environments
@@ -27,28 +13,6 @@ This system supports 1000+ parallel test executions across multi-tenant projects
 - **CI/CD Ready**: Jenkins, GitHub Actions, Azure DevOps integration
 - **Docker & Kubernetes**: Containerized execution and orchestration
 - **Real-time Reporting**: Allure, HTML, JUnit reports with live dashboards
-- **Distributed Test Execution**: Across multiple environments with intelligent load balancing
-- **Real-time Reporting**: Interactive dashboard with comprehensive analytics
-- **Intelligent Test Generation**: AI-powered test case creation and maintenance
-- **Cross-Platform Testing**: Browser, mobile, API, and performance testing support
-- **Advanced Test Data Management**: Dynamic data generation and management
-- **Role-based Access Control**: Granular permissions and audit trails
-
-### Test Execution Reporting System
-- **Multi-Storage Support**: SQLite and JSON storage with advanced filtering
-- **Interactive Dashboard**: Real-time metrics, charts, and analytics
-- **Export Capabilities**: Excel, CSV, and JSON exports with customizable content
-- **Playwright Integration**: Automatic test result capture and reporting
-- **GitHub Actions Support**: Complete CI/CD integration with artifact management
-- **AWS Migration Ready**: Enterprise cloud deployment capabilities
-
-### Architecture Features
-- **Microservices Architecture**: 17 independent services with service mesh
-- **Plugin-Based Extensibility**: 4-layer plugin system for customization
-- **Multi-Tenant Support**: Complete project isolation with resource quotas
-- **Massive Parallel Execution**: 1000+ concurrent test execution capability
-- **Self-Healing Tests**: AI-powered element recovery and maintenance
-- **Enterprise Security**: Comprehensive security and compliance features
 
 ## 📊 **Framework Statistics**
 
@@ -58,17 +22,6 @@ This system supports 1000+ parallel test executions across multi-tenant projects
 - **Execution Speed**: Full regression in <30 minutes
 - **Parallel Workers**: Up to 1000+ concurrent executions
 - **Browser Support**: 15+ browser/device combinations
-
-## Technology Stack
-- **Orchestration**: Kubernetes, Docker, Istio Service Mesh
-- **Languages**: Java 21, Python 3.11, TypeScript 5.0, Go 1.21
-- **Testing**: Playwright, Selenium Grid, K6, Artillery, OWASP ZAP
-- **AI/ML**: OpenAI GPT-4, TensorFlow, Computer Vision (OpenCV)
-- **Databases**: PostgreSQL 15, MongoDB 7, Redis 7, ClickHouse
-- **Message Queue**: Apache Kafka, RabbitMQ
-- **Monitoring**: Prometheus, Grafana, ELK Stack, Jaeger
-- **Cloud**: AWS/Azure/GCP with Terraform IaC
-- **Reporting**: Custom dashboard, Allure reports, Excel/CSV exports
 
 ## 🏗️ **Architecture Overview**
 
@@ -101,7 +54,20 @@ unified-automation-framework/
 └── docs/                        # Documentation
 ```
 
-## Getting Started
+## 🛠️ **Technology Stack**
+
+| Category | Technology | Purpose |
+|----------|------------|---------|
+| **Core** | TypeScript, Node.js | Primary development language |
+| **Testing** | Playwright, Jest | Test execution and assertions |
+| **Reporting** | Allure, HTML Reports | Test result visualization |
+| **CI/CD** | Jenkins, GitHub Actions | Continuous integration |
+| **Containerization** | Docker, Kubernetes | Scalable execution |
+| **Cloud** | AWS, BrowserStack | Cloud testing and storage |
+| **Database** | PostgreSQL, MySQL, MongoDB | Database testing |
+| **Monitoring** | Winston, CloudWatch | Logging and monitoring |
+
+## 🚀 **Quick Start**
 
 ### Prerequisites
 - Node.js 18+ and npm 9+
@@ -113,9 +79,6 @@ unified-automation-framework/
 ```bash
 # Clone the repository
 git clone https://github.com/Ram0309/learningNewSkill.git
-cd learningNewSkill
-
-# Navigate to the unified automation framework
 cd unified-automation-framework
 
 # Install dependencies
@@ -124,54 +87,15 @@ npm install
 # Install Playwright browsers
 npx playwright install
 
-# Setup database with sample data
-npm run setup:db
-
-# Start the reporting dashboard
-npm run dashboard:serve
-
-# Run regression tests
-npm run test:regression
-
 # Set up environment
 cp .env.example .env
 
 # Run tests
 npm test
-
-# Setup infrastructure (for production)
-terraform -chdir=infrastructure/terraform init
-terraform -chdir=infrastructure/terraform apply
-
-# Deploy services to Kubernetes
-kubectl apply -f infrastructure/kubernetes/
-```
-
-### Test Execution Reporting System
-```bash
-# Navigate to reporting system
-cd test-execution-reporting
-
-# Install dependencies
-npm install
-
-# Setup database
-npm run setup:db
-
-# Start interactive CLI
-npx test-execution-reporting interactive
-
-# View statistics
-npx test-execution-reporting stats
-
-# Export data
-npx test-execution-reporting export --format excel
-
-# Start dashboard
-npx test-execution-reporting dashboard
 ```
 
 ### Using Make (Recommended)
+
 ```bash
 # Complete setup
 make setup
@@ -339,32 +263,6 @@ The framework includes `.github/workflows/test-automation.yml` for:
 - **Resource Usage**: <2GB memory per worker
 - **Cross-browser**: 15+ browser/device combinations
 
-### Reporting System Capabilities
-- **Data Storage**: SQLite/JSON with AWS migration path
-- **Dashboard Performance**: Real-time updates with <1s latency
-- **Export Speed**: 10,000+ test results in <30s
-- **Concurrent Users**: 100+ simultaneous dashboard users
-- **Data Retention**: Configurable with automatic archiving
-
-## Project Structure
-
-```
-enterprise-test-automation-ecosystem/
-├── unified-automation-framework/          # Main automation framework
-│   ├── src/                               # Source code
-│   ├── tests/                             # Test suites
-│   ├── test-execution-reporting/          # Reporting system
-│   └── config/                            # Configuration files
-├── services/                              # Microservices
-│   ├── test-manager/                      # Test management service
-│   ├── execution-orchestrator/            # Execution orchestration
-│   └── ai-engine/                         # AI-powered services
-├── infrastructure/                        # Infrastructure as Code
-│   ├── kubernetes/                        # K8s manifests
-│   └── terraform/                         # Terraform configurations
-└── docs/                                  # Documentation
-```
-
 ## 🔒 **Security & Compliance**
 
 ### Security Features
@@ -431,5 +329,3 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 **Built with ❤️ by the Enterprise Test Automation Team**
 
 *Empowering Fortune 500 companies with scalable, maintainable, and efficient test automation solutions.*
-
-This enterprise-grade framework provides production-ready automation capabilities with comprehensive reporting, microservices-based design, plugin extensibility, proper layered architecture, multi-tenant support, massive parallel execution (1000+ tests), and full containerization with Kubernetes orchestration.

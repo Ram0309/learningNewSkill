@@ -8,7 +8,7 @@ function generateUniqueEmail(emailTemplate: string): string {
   return emailTemplate.replace('{{timestamp}}', timestamp.toString());
 }
 
-test.describe('User Registration Tests @regression', () => {
+test.describe('User Registration Tests', () => {
   let registrationPage: RegistrationPage;
 
   test.beforeEach(async ({ page }) => {
@@ -17,9 +17,9 @@ test.describe('User Registration Tests @regression', () => {
     await registrationPage.verifyPageLoaded();
   });
 
-  test.describe('Valid Registration Tests @regression', () => {
+  test.describe('Valid Registration Tests', () => {
     registrationData.validUsers.forEach((userData) => {
-      test(`${userData.testId}: ${userData.description} @regression @ui`, async () => {
+      test(`${userData.testId}: ${userData.description}`, async () => {
         // Generate unique email for this test run
         const uniqueEmail = generateUniqueEmail(userData.email);
         
@@ -43,9 +43,9 @@ test.describe('User Registration Tests @regression', () => {
     });
   });
 
-  test.describe('Invalid Registration Tests @regression', () => {
+  test.describe('Invalid Registration Tests', () => {
     registrationData.invalidUsers.forEach((userData) => {
-      test(`${userData.testId}: ${userData.description} @regression @ui`, async () => {
+      test(`${userData.testId}: ${userData.description}`, async () => {
         let testData = { ...userData };
         
         // Generate unique email if template is provided
@@ -65,9 +65,9 @@ test.describe('User Registration Tests @regression', () => {
     });
   });
 
-  test.describe('Edge Case Tests @regression', () => {
+  test.describe('Edge Case Tests', () => {
     registrationData.edgeCases.forEach((userData) => {
-      test(`${userData.testId}: ${userData.description} @regression @ui`, async () => {
+      test(`${userData.testId}: ${userData.description}`, async () => {
         let testData = { ...userData };
         
         // Generate unique email if template is provided
@@ -89,23 +89,23 @@ test.describe('User Registration Tests @regression', () => {
     });
   });
 
-  test.describe('Form Validation Tests @regression', () => {
-    test('REG_FORM_001: Verify all form fields are present and enabled @regression @ui', async () => {
+  test.describe('Form Validation Tests', () => {
+    test('REG_FORM_001: Verify all form fields are present and enabled', async () => {
       await registrationPage.verifyFormFieldProperties();
     });
 
-    test('REG_FORM_002: Verify required field indicators @regression @ui', async () => {
+    test('REG_FORM_002: Verify required field indicators', async () => {
       await registrationPage.verifyRequiredFieldIndicators();
     });
 
-    test('REG_FORM_003: Verify form field tab navigation @regression @ui', async () => {
+    test('REG_FORM_003: Verify form field tab navigation', async () => {
       await registrationPage.navigateWithTab();
       
       // Verify focus moves through fields correctly
       await expect(registrationPage.registerButton).toBeFocused();
     });
 
-    test('REG_FORM_004: Verify form submission with Enter key @regression @ui', async () => {
+    test('REG_FORM_004: Verify form submission with Enter key', async () => {
       const validUser = registrationData.validUsers[0];
       const uniqueEmail = generateUniqueEmail(validUser.email);
       
@@ -118,7 +118,7 @@ test.describe('User Registration Tests @regression', () => {
       await registrationPage.verifySuccessfulRegistration();
     });
 
-    test('REG_FORM_005: Verify form field clearing functionality @regression @ui', async () => {
+    test('REG_FORM_005: Verify form field clearing functionality', async () => {
       const validUser = registrationData.validUsers[0];
       
       // Fill form with data
@@ -137,13 +137,13 @@ test.describe('User Registration Tests @regression', () => {
     });
   });
 
-  test.describe('UI/UX Tests @regression', () => {
-    test('REG_UI_001: Verify page title and heading @regression @ui', async () => {
+  test.describe('UI/UX Tests', () => {
+    test('REG_UI_001: Verify page title and heading', async () => {
       await expect(registrationPage.page).toHaveTitle(/Register/);
       await expect(registrationPage.page.locator('h1')).toContainText('Register');
     });
 
-    test('REG_UI_002: Verify gender radio button selection @regression @ui', async () => {
+    test('REG_UI_002: Verify gender radio button selection', async () => {
       // Test male selection
       await registrationPage.selectGender('Male');
       const fieldValues1 = await registrationPage.getFieldValues();
@@ -157,7 +157,7 @@ test.describe('User Registration Tests @regression', () => {
       expect(fieldValues2.genderFemaleSelected).toBe(true);
     });
 
-    test('REG_UI_003: Verify password field masking @regression @ui', async () => {
+    test('REG_UI_003: Verify password field masking', async () => {
       await registrationPage.fillPassword('TestPassword123');
       
       // Verify password field type is 'password'
@@ -165,7 +165,7 @@ test.describe('User Registration Tests @regression', () => {
       await expect(registrationPage.confirmPasswordInput).toHaveAttribute('type', 'password');
     });
 
-    test('REG_UI_004: Verify form responsiveness on different viewport sizes @regression @ui', async ({ page }) => {
+    test('REG_UI_004: Verify form responsiveness on different viewport sizes', async ({ page }) => {
       // Test mobile viewport
       await page.setViewportSize({ width: 375, height: 667 });
       await registrationPage.verifyFormFieldProperties();
@@ -180,8 +180,8 @@ test.describe('User Registration Tests @regression', () => {
     });
   });
 
-  test.describe('Security Tests @regression', () => {
-    test('REG_SEC_001: Verify XSS protection in form fields @regression @ui', async () => {
+  test.describe('Security Tests', () => {
+    test('REG_SEC_001: Verify XSS protection in form fields', async () => {
       const xssPayload = '<script>alert("XSS")</script>';
       
       await registrationPage.fillFirstName(xssPayload);
@@ -194,7 +194,7 @@ test.describe('User Registration Tests @regression', () => {
       expect(fieldValues.lastName).not.toContain('<script>');
     });
 
-    test('REG_SEC_002: Verify SQL injection protection @regression @ui', async () => {
+    test('REG_SEC_002: Verify SQL injection protection', async () => {
       const sqlPayload = "'; DROP TABLE users; --";
       const uniqueEmail = generateUniqueEmail('sql.test.{{timestamp}}@test.com');
       
@@ -219,7 +219,7 @@ test.describe('User Registration Tests @regression', () => {
       }
     });
 
-    test('REG_SEC_003: Verify CSRF protection @regression @ui', async ({ page }) => {
+    test('REG_SEC_003: Verify CSRF protection', async ({ page }) => {
       // Check if CSRF token is present in the form
       const csrfToken = await page.locator('input[name="__RequestVerificationToken"]');
       
@@ -230,8 +230,8 @@ test.describe('User Registration Tests @regression', () => {
     });
   });
 
-  test.describe('Performance Tests @regression', () => {
-    test('REG_PERF_001: Verify page load performance @regression @ui', async ({ page }) => {
+  test.describe('Performance Tests', () => {
+    test('REG_PERF_001: Verify page load performance', async ({ page }) => {
       const startTime = Date.now();
       
       await registrationPage.navigateToRegistrationPage();
@@ -243,7 +243,7 @@ test.describe('User Registration Tests @regression', () => {
       expect(loadTime).toBeLessThan(5000);
     });
 
-    test('REG_PERF_002: Verify form submission performance @regression @ui', async () => {
+    test('REG_PERF_002: Verify form submission performance', async () => {
       const validUser = registrationData.validUsers[0];
       const uniqueEmail = generateUniqueEmail(validUser.email);
       
@@ -262,8 +262,8 @@ test.describe('User Registration Tests @regression', () => {
     });
   });
 
-  test.describe('Accessibility Tests @regression', () => {
-    test('REG_A11Y_001: Verify form labels and accessibility attributes @regression @ui', async ({ page }) => {
+  test.describe('Accessibility Tests', () => {
+    test('REG_A11Y_001: Verify form labels and accessibility attributes', async ({ page }) => {
       // Check for proper labels
       await expect(page.locator('label[for="FirstName"]')).toBeVisible();
       await expect(page.locator('label[for="LastName"]')).toBeVisible();
@@ -272,7 +272,7 @@ test.describe('User Registration Tests @regression', () => {
       await expect(page.locator('label[for="ConfirmPassword"]')).toBeVisible();
     });
 
-    test('REG_A11Y_002: Verify keyboard navigation @regression @ui', async ({ page }) => {
+    test('REG_A11Y_002: Verify keyboard navigation', async ({ page }) => {
       // Test tab order
       await page.keyboard.press('Tab');
       await expect(registrationPage.genderMaleRadio).toBeFocused();
@@ -300,8 +300,8 @@ test.describe('User Registration Tests @regression', () => {
     });
   });
 
-  test.describe('Cross-Browser Compatibility Tests @regression', () => {
-    test('REG_CROSS_001: Verify registration works across different browsers @regression @ui', async () => {
+  test.describe('Cross-Browser Compatibility Tests', () => {
+    test('REG_CROSS_001: Verify registration works across different browsers', async () => {
       const validUser = registrationData.validUsers[0];
       const uniqueEmail = generateUniqueEmail(validUser.email);
       

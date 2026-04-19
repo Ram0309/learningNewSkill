@@ -1,0 +1,84 @@
+{
+  "environment": "development",
+  "baseUrl": "https://dev-demowebshop.tricentis.com",
+  "apiBaseUrl": "https://dev-api.tricentis.com/v1",
+  "timeout": 30000,
+  "retries": 2,
+  "headless": true,
+  "slowMo": 0,
+  "database": {
+    "host": "dev-db.company.com",
+    "port": 5432,
+    "database": "testdb_dev",
+    "username": "test_user",
+    "password": "${DEV_DB_PASSWORD}",
+    "connectionString": "${DEV_DB_CONNECTION}"
+  },
+  "features": {
+    "registration": {
+      "enabled": true,
+      "url": "/register",
+      "apiEndpoint": "/api/users/register"
+    },
+    "login": {
+      "enabled": true,
+      "url": "/login",
+      "apiEndpoint": "/api/auth/login"
+    },
+    "checkout": {
+      "enabled": true,
+      "url": "/checkout",
+      "apiEndpoint": "/api/orders"
+    }
+  },
+  "testData": {
+    "users": {
+      "validUser": {
+        "firstName": "John",
+        "lastName": "Doe",
+        "email": "john.doe.dev@test.com",
+        "password": "DevPass123!"
+      },
+      "adminUser": {
+        "email": "admin.dev@test.com",
+        "password": "AdminDev123!"
+      }
+    },
+    "products": {
+      "sampleProduct": {
+        "id": "dev-product-001",
+        "name": "Test Product Dev",
+        "price": 99.99
+      }
+    }
+  },
+  "integrations": {
+    "jira": {
+      "enabled": false,
+      "projectKey": "TAF-DEV"
+    },
+    "slack": {
+      "enabled": true,
+      "channel": "#test-automation-dev"
+    },
+    "browserstack": {
+      "enabled": false
+    },
+    "aws": {
+      "enabled": false,
+      "s3Bucket": "taf-dev-reports"
+    }
+  },
+  "performance": {
+    "loadUsers": 10,
+    "duration": 60,
+    "thresholds": {
+      "responseTime": 2000,
+      "errorRate": 5
+    }
+  },
+  "security": {
+    "enableSecurityTests": true,
+    "skipSslVerification": true
+  }
+}
