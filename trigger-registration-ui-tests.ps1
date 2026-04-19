@@ -121,7 +121,8 @@ try {
                         
                         Write-Host "📁 Generated Artifacts:" -ForegroundColor $Cyan
                         foreach ($artifact in $artifacts.artifacts) {
-                            Write-Host "  - $($artifact.name) ($([math]::Round($artifact.size_in_bytes / 1MB, 2)) MB)" -ForegroundColor $Yellow
+                            $sizeInMB = [math]::Round($artifact.size_in_bytes / 1MB, 2)
+                            Write-Host "  - $($artifact.name) ($sizeInMB MB)" -ForegroundColor $Yellow
                         }
                         
                         # Check if GitHub Pages report is available
