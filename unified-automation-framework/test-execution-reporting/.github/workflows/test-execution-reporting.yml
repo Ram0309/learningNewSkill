@@ -1,0 +1,397 @@
+name: Test Execution with Reporting
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    # Run daily at 2 AM UTC
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to run tests against'
+        required: true
+        default: 'qa'
+        type: choice
+        options:
+          - dev
+          - qa
+          - stage
+          - prod
+      test_suite:
+        description: 'Test suite to run'
+        required: false
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - smoke
+          - regression
+          - api
+          - ui
+      browser:
+        description: 'Browser to run tests on'
+        required: false
+        default: 'chromium'
+        type: choice
+        options:
+          - chromium
+          - firefox
+          - webkit
+          - all
+
+env:
+  # Project Configuration
+  PROJECT_NAME: ${{ github.repository }}
+  SQUAD_NAME: "QA-Automation"
+  
+  # Environment Configuration
+  TEST_ENVIRONMENT: ${{ github.event.inputs.environment || 'qa' }}
+  NODE_VERSION: '18'
+  
+  # Reporting Configuration
+  REPORTING_STORAGE_TYPE: 'sqlite'
+  REPORTING_ENABLED: 'true'
+  
+  # Playwright Configuration
+  PLAYWRIGHT_BROWSERS_PATH: 0
+
+jobs:
+  test-execution:
+    name: Execute Tests with Reporting
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: ${{ github.event.inputs.browser == 'all' && fromJSON('["chromium", "firefox", "webkit"]') || fromJSON(format('["{0}"]', github.event.inputs.browser || 'chromium')) }}
+    
+    steps:
+      - name: 🔄 Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 📋 Setup Test Environment Info
+        id: env-info
+        run: |
+          echo "execution-id=$(date +%s)-${{ github.run_number }}-${{ matrix.browser }}" >> $GITHUB_OUTPUT
+          echo "start-time=$(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)" >> $GITHUB_OUTPUT
+          echo "browser=${{ matrix.browser }}" >> $GITHUB_OUTPUT
+          echo "test-suite=${{ github.event.inputs.test_suite || 'all' }}" >> $GITHUB_OUTPUT
+
+      - name: 🟢 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: |
+            package-lock.json
+            test-execution-reporting/package-lock.json
+
+      - name: 📦 Install Dependencies
+        run: |
+          npm ci
+          cd test-execution-reporting
+          npm ci
+
+      - name: 🎭 Install Playwright Browsers
+        run: |
+          cd test-execution-reporting
+          npx playwright install --with-deps ${{ matrix.browser }}
+
+      - name: 🗄️ Setup Test Execution Database
+        run: |
+          cd test-execution-reporting
+          npm run setup:db
+
+      - name: 🧪 Run Tests with Reporting
+        id: test-execution
+        env:
+          # Test Configuration
+          BROWSER: ${{ matrix.browser }}
+          TEST_SUITE: ${{ steps.env-info.outputs.test-suite }}
+          EXECUTION_ID: ${{ steps.env-info.outputs.execution-id }}
+          
+          # CI/CD Context
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CI: true
+          
+          # Reporting Context
+          EXECUTION_START_TIME: ${{ steps.env-info.outputs.start-time }}
+          
+        run: |
+          cd test-execution-reporting
+          
+          # Set test command based on suite
+          case "${{ steps.env-info.outputs.test-suite }}" in
+            "smoke")
+              TEST_CMD="npx playwright test --grep @smoke --project=${{ matrix.browser }}"
+              ;;
+            "regression")
+              TEST_CMD="npx playwright test --grep @regression --project=${{ matrix.browser }}"
+              ;;
+            "api")
+              TEST_CMD="npx playwright test tests/api --project=${{ matrix.browser }}"
+              ;;
+            "ui")
+              TEST_CMD="npx playwright test tests/ui --project=${{ matrix.browser }}"
+              ;;
+            *)
+              TEST_CMD="npx playwright test --project=${{ matrix.browser }}"
+              ;;
+          esac
+          
+          echo "🚀 Executing: $TEST_CMD"
+          
+          # Run tests and capture exit code
+          set +e
+          $TEST_CMD
+          TEST_EXIT_CODE=$?
+          set -e
+          
+          echo "test-exit-code=$TEST_EXIT_CODE" >> $GITHUB_OUTPUT
+          echo "end-time=$(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)" >> $GITHUB_OUTPUT
+          
+          # Tests can fail but we still want to process results
+          exit 0
+
+      - name: 📊 Generate Test Reports
+        if: always()
+        run: |
+          cd test-execution-reporting
+          
+          # Generate Excel report
+          npm run export:excel -- \
+            --environment="${{ env.TEST_ENVIRONMENT }}" \
+            --browser="${{ matrix.browser }}" \
+            --output="reports/excel/test-report-${{ steps.env-info.outputs.execution-id }}.xlsx"
+          
+          # Generate CSV report
+          npm run export:csv -- \
+            --environment="${{ env.TEST_ENVIRONMENT }}" \
+            --browser="${{ matrix.browser }}" \
+            --output="reports/csv/test-report-${{ steps.env-info.outputs.execution-id }}.csv"
+
+      - name: 📈 Generate Dashboard
+        if: always()
+        run: |
+          cd test-execution-reporting
+          npm run dashboard:build
+
+      - name: 📤 Upload Test Results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-${{ matrix.browser }}-${{ github.run_number }}
+          path: |
+            test-execution-reporting/test-results/
+            test-execution-reporting/playwright-report/
+            test-execution-reporting/reports/
+            test-execution-reporting/data/
+          retention-days: 30
+
+      - name: 📤 Upload Test Execution Database
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: execution-database-${{ matrix.browser }}-${{ github.run_number }}
+          path: test-execution-reporting/data/execution-history.db
+          retention-days: 90
+
+      - name: 📊 Upload Dashboard
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dashboard-${{ matrix.browser }}-${{ github.run_number }}
+          path: test-execution-reporting/dashboard/dist/
+          retention-days: 30
+
+      - name: 💬 Comment PR with Results
+        if: github.event_name == 'pull_request' && always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const path = require('path');
+            
+            // Read execution summary (this would be generated by the reporting system)
+            let summary = {
+              total: 0,
+              passed: 0,
+              failed: 0,
+              skipped: 0,
+              passRate: 0,
+              duration: 0
+            };
+            
+            try {
+              const summaryPath = 'test-execution-reporting/reports/summary.json';
+              if (fs.existsSync(summaryPath)) {
+                summary = JSON.parse(fs.readFileSync(summaryPath, 'utf8'));
+              }
+            } catch (error) {
+              console.log('Could not read summary file:', error.message);
+            }
+            
+            const testExitCode = '${{ steps.test-execution.outputs.test-exit-code }}';
+            const browser = '${{ matrix.browser }}';
+            const environment = '${{ env.TEST_ENVIRONMENT }}';
+            
+            const statusEmoji = testExitCode === '0' ? '✅' : '❌';
+            const passRateEmoji = summary.passRate >= 90 ? '🟢' : summary.passRate >= 70 ? '🟡' : '🔴';
+            
+            const comment = `
+            ## ${statusEmoji} Test Execution Results - ${browser}
+            
+            **Environment:** ${environment}  
+            **Browser:** ${browser}  
+            **Execution ID:** ${{ steps.env-info.outputs.execution-id }}
+            
+            ### 📊 Test Summary
+            | Metric | Value |
+            |--------|-------|
+            | Total Tests | ${summary.total} |
+            | Passed | ${summary.passed} ✅ |
+            | Failed | ${summary.failed} ❌ |
+            | Skipped | ${summary.skipped} ⏭️ |
+            | Pass Rate | ${passRateEmoji} ${summary.passRate.toFixed(1)}% |
+            | Duration | ${Math.round(summary.duration / 1000)}s |
+            
+            ### 📁 Artifacts
+            - 📊 [Test Reports](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
+            - 📈 [Dashboard](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
+            - 🗄️ [Execution Database](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
+            
+            ---
+            *Generated by Test Execution Reporting System*
+            `;
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });
+
+      - name: 📧 Notify on Failure
+        if: failure() && (github.ref == 'refs/heads/main' || github.event_name == 'schedule')
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const runUrl = `https://github.com/${owner}/${repo}/actions/runs/${{ github.run_id }}`;
+            
+            // Create an issue for test failures on main branch or scheduled runs
+            await github.rest.issues.create({
+              owner,
+              repo,
+              title: `🚨 Test Execution Failed - ${new Date().toISOString().split('T')[0]}`,
+              body: `
+              ## Test Execution Failure Alert
+              
+              **Browser:** ${{ matrix.browser }}  
+              **Environment:** ${{ env.TEST_ENVIRONMENT }}  
+              **Trigger:** ${{ github.event_name }}  
+              **Branch:** ${{ github.ref_name }}  
+              
+              **Run Details:** ${runUrl}
+              
+              ### Action Required
+              - [ ] Investigate test failures
+              - [ ] Fix failing tests
+              - [ ] Update test data if needed
+              - [ ] Verify environment stability
+              
+              **Auto-generated by Test Execution Reporting System**
+              `,
+              labels: ['bug', 'test-failure', 'automation']
+            });
+
+  consolidate-results:
+    name: Consolidate Test Results
+    runs-on: ubuntu-latest
+    needs: test-execution
+    if: always()
+    
+    steps:
+      - name: 🔄 Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: 🟢 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: 📥 Download All Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts/
+
+      - name: 🔄 Consolidate Execution Data
+        run: |
+          cd test-execution-reporting
+          npm ci
+          
+          # Merge all execution databases
+          node scripts/consolidate-results.js ../artifacts/
+
+      - name: 📊 Generate Consolidated Reports
+        run: |
+          cd test-execution-reporting
+          
+          # Generate consolidated Excel report
+          npm run export:excel -- \
+            --output="reports/excel/consolidated-report-${{ github.run_number }}.xlsx"
+          
+          # Generate trend analysis
+          npm run generate:trends -- \
+            --days=30 \
+            --output="reports/trends/trend-analysis-${{ github.run_number }}.json"
+
+      - name: 📤 Upload Consolidated Results
+        uses: actions/upload-artifact@v4
+        with:
+          name: consolidated-results-${{ github.run_number }}
+          path: |
+            test-execution-reporting/reports/
+            test-execution-reporting/data/
+          retention-days: 90
+
+      - name: 🏷️ Tag Successful Builds
+        if: success() && github.ref == 'refs/heads/main'
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          
+          TAG_NAME="test-execution-$(date +%Y%m%d-%H%M%S)"
+          git tag -a "$TAG_NAME" -m "Successful test execution: ${{ github.run_number }}"
+          git push origin "$TAG_NAME"
+
+  # Optional: Deploy dashboard to GitHub Pages
+  deploy-dashboard:
+    name: Deploy Dashboard
+    runs-on: ubuntu-latest
+    needs: consolidate-results
+    if: github.ref == 'refs/heads/main' && success()
+    
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    
+    steps:
+      - name: 📥 Download Consolidated Results
+        uses: actions/download-artifact@v4
+        with:
+          name: consolidated-results-${{ github.run_number }}
+          path: dashboard-deploy/
+
+      - name: 🚀 Deploy to GitHub Pages
+        uses: actions/deploy-pages@v4
+        with:
+          artifact_name: dashboard-deploy

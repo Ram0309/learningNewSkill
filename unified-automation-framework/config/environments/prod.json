@@ -1,0 +1,93 @@
+{
+  "environment": "production",
+  "baseUrl": "https://demowebshop.tricentis.com",
+  "apiBaseUrl": "https://api.tricentis.com/v1",
+  "timeout": 90000,
+  "retries": 1,
+  "headless": true,
+  "slowMo": 0,
+  "database": {
+    "host": "prod-db.company.com",
+    "port": 5432,
+    "database": "testdb_prod",
+    "username": "test_user_readonly",
+    "password": "${PROD_DB_PASSWORD}",
+    "connectionString": "${PROD_DB_CONNECTION}"
+  },
+  "features": {
+    "registration": {
+      "enabled": true,
+      "url": "/register",
+      "apiEndpoint": "/api/users/register",
+      "note": "Registration enabled for testing purposes"
+    },
+    "login": {
+      "enabled": true,
+      "url": "/login",
+      "apiEndpoint": "/api/auth/login"
+    },
+    "checkout": {
+      "enabled": false,
+      "url": "/checkout",
+      "apiEndpoint": "/api/orders",
+      "note": "Checkout disabled in production for safety"
+    }
+  },
+  "testData": {
+    "users": {
+      "validUser": {
+        "firstName": "Test",
+        "lastName": "User",
+        "email": "readonly.user@test.com",
+        "password": "ReadOnlyPass123!"
+      },
+      "adminUser": {
+        "email": "readonly.admin@test.com",
+        "password": "ReadOnlyAdmin123!"
+      }
+    },
+    "products": {
+      "sampleProduct": {
+        "id": "prod-product-001",
+        "name": "Production Product",
+        "price": 299.99
+      }
+    }
+  },
+  "integrations": {
+    "jira": {
+      "enabled": true,
+      "projectKey": "TAF-PROD"
+    },
+    "slack": {
+      "enabled": true,
+      "channel": "#test-automation-prod"
+    },
+    "browserstack": {
+      "enabled": true
+    },
+    "aws": {
+      "enabled": true,
+      "s3Bucket": "taf-prod-reports"
+    }
+  },
+  "performance": {
+    "loadUsers": 5,
+    "duration": 60,
+    "thresholds": {
+      "responseTime": 500,
+      "errorRate": 1
+    },
+    "note": "Limited performance testing in production"
+  },
+  "security": {
+    "enableSecurityTests": false,
+    "skipSslVerification": false,
+    "note": "Security tests disabled in production"
+  },
+  "restrictions": {
+    "smokeTestsOnly": true,
+    "noDataModification": true,
+    "readOnlyOperations": true
+  }
+}

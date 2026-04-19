@@ -1,0 +1,84 @@
+{
+  "environment": "preprod",
+  "baseUrl": "https://preprod-demowebshop.tricentis.com",
+  "apiBaseUrl": "https://preprod-api.tricentis.com/v1",
+  "timeout": 60000,
+  "retries": 3,
+  "headless": true,
+  "slowMo": 0,
+  "database": {
+    "host": "preprod-db.company.com",
+    "port": 5432,
+    "database": "testdb_preprod",
+    "username": "test_user",
+    "password": "${PREPROD_DB_PASSWORD}",
+    "connectionString": "${PREPROD_DB_CONNECTION}"
+  },
+  "features": {
+    "registration": {
+      "enabled": true,
+      "url": "/register",
+      "apiEndpoint": "/api/users/register"
+    },
+    "login": {
+      "enabled": true,
+      "url": "/login",
+      "apiEndpoint": "/api/auth/login"
+    },
+    "checkout": {
+      "enabled": true,
+      "url": "/checkout",
+      "apiEndpoint": "/api/orders"
+    }
+  },
+  "testData": {
+    "users": {
+      "validUser": {
+        "firstName": "Alice",
+        "lastName": "Johnson",
+        "email": "alice.johnson.preprod@test.com",
+        "password": "PreprodPass123!"
+      },
+      "adminUser": {
+        "email": "admin.preprod@test.com",
+        "password": "AdminPreprod123!"
+      }
+    },
+    "products": {
+      "sampleProduct": {
+        "id": "preprod-product-001",
+        "name": "Test Product PreProd",
+        "price": 199.99
+      }
+    }
+  },
+  "integrations": {
+    "jira": {
+      "enabled": true,
+      "projectKey": "TAF-PREPROD"
+    },
+    "slack": {
+      "enabled": true,
+      "channel": "#test-automation-preprod"
+    },
+    "browserstack": {
+      "enabled": true
+    },
+    "aws": {
+      "enabled": true,
+      "s3Bucket": "taf-preprod-reports"
+    }
+  },
+  "performance": {
+    "loadUsers": 100,
+    "duration": 600,
+    "thresholds": {
+      "responseTime": 1000,
+      "errorRate": 2
+    }
+  },
+  "security": {
+    "enableSecurityTests": true,
+    "skipSslVerification": false
+  }
+}

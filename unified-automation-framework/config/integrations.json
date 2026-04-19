@@ -1,0 +1,134 @@
+{
+  "jira": {
+    "enabled": false,
+    "baseUrl": "${JIRA_URL}",
+    "username": "${JIRA_USERNAME}",
+    "apiToken": "${JIRA_API_TOKEN}",
+    "projectKey": "TAF",
+    "issueTypes": {
+      "bug": "Bug",
+      "story": "Story",
+      "task": "Task",
+      "testCase": "Test Case"
+    },
+    "customFields": {
+      "testEnvironment": "customfield_10001",
+      "testSuite": "customfield_10002",
+      "automationStatus": "customfield_10003"
+    },
+    "templates": {
+      "bugReport": {
+        "summary": "Test Failure: {testName}",
+        "description": "Automated test failed in {environment}\\n\\nTest: {testName}\\nError: {errorMessage}\\nScreenshot: {screenshotUrl}",
+        "priority": "High",
+        "labels": ["automation", "test-failure"]
+      }
+    }
+  },
+  "browserstack": {
+    "enabled": false,
+    "username": "${BROWSERSTACK_USERNAME}",
+    "accessKey": "${BROWSERSTACK_ACCESS_KEY}",
+    "buildName": "Enterprise Test Automation Framework",
+    "projectName": "TAF",
+    "local": false,
+    "debug": false,
+    "networkLogs": true,
+    "consoleLogs": "info",
+    "capabilities": {
+      "desktop": [
+        {
+          "browserName": "Chrome",
+          "browserVersion": "latest",
+          "os": "Windows",
+          "osVersion": "11"
+        },
+        {
+          "browserName": "Firefox",
+          "browserVersion": "latest",
+          "os": "Windows",
+          "osVersion": "11"
+        },
+        {
+          "browserName": "Safari",
+          "browserVersion": "latest",
+          "os": "OS X",
+          "osVersion": "Monterey"
+        }
+      ],
+      "mobile": [
+        {
+          "deviceName": "iPhone 14",
+          "osVersion": "16",
+          "browserName": "Safari"
+        },
+        {
+          "deviceName": "Samsung Galaxy S23",
+          "osVersion": "13.0",
+          "browserName": "Chrome"
+        }
+      ]
+    }
+  },
+  "aws": {
+    "enabled": false,
+    "region": "${AWS_REGION}",
+    "accessKeyId": "${AWS_ACCESS_KEY_ID}",
+    "secretAccessKey": "${AWS_SECRET_ACCESS_KEY}",
+    "s3": {
+      "buckets": {
+        "testReports": "taf-test-reports-${ENVIRONMENT}",
+        "screenshots": "taf-screenshots-${ENVIRONMENT}",
+        "testData": "taf-test-data-${ENVIRONMENT}"
+      }
+    },
+    "ses": {
+      "fromEmail": "noreply@company.com",
+      "recipients": {
+        "testResults": ["qa-team@company.com"],
+        "failures": ["dev-team@company.com"]
+      }
+    }
+  },
+  "slack": {
+    "enabled": false,
+    "botToken": "${SLACK_BOT_TOKEN}",
+    "channel": "${SLACK_CHANNEL}",
+    "webhookUrl": "${SLACK_WEBHOOK_URL}",
+    "notifications": {
+      "testStart": true,
+      "testComplete": true,
+      "testFailure": true,
+      "dailyReport": true
+    }
+  },
+  "database": {
+    "postgresql": {
+      "enabled": false,
+      "connectionString": "${POSTGRES_CONNECTION_STRING}",
+      "host": "${POSTGRES_HOST}",
+      "port": "${POSTGRES_PORT}",
+      "database": "${POSTGRES_DATABASE}",
+      "username": "${POSTGRES_USERNAME}",
+      "password": "${POSTGRES_PASSWORD}"
+    },
+    "mysql": {
+      "enabled": false,
+      "connectionString": "${MYSQL_CONNECTION_STRING}",
+      "host": "${MYSQL_HOST}",
+      "port": "${MYSQL_PORT}",
+      "database": "${MYSQL_DATABASE}",
+      "username": "${MYSQL_USERNAME}",
+      "password": "${MYSQL_PASSWORD}"
+    },
+    "mongodb": {
+      "enabled": false,
+      "connectionString": "${MONGODB_CONNECTION_STRING}",
+      "host": "${MONGODB_HOST}",
+      "port": "${MONGODB_PORT}",
+      "database": "${MONGODB_DATABASE}",
+      "username": "${MONGODB_USERNAME}",
+      "password": "${MONGODB_PASSWORD}"
+    }
+  }
+}
