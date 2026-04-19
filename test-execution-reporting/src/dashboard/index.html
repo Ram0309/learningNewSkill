@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Execution Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/date-fns@2.29.3/index.min.js"></script>
+    <style>
+        .dashboard-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 2rem 0;
+        }
+        .metric-card {
+            border-radius: 15px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: transform 0.2s;
+        }
+        .metric-card:hover {
+            transform: translateY(-5px);
+        }
+        .chart-container {
+            position: relative;
+            height: 400px;
+            margin: 20px 0;
+        }
+        .filter-section {
+            background-color: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 30px;
+        }
+        .status-badge {
+            font-size: 0.8rem;
+            padding: 0.25rem 0.5rem;
+        }
+        .loading-spinner {
+            display: none;
+        }
+        .error-message {
+            display: none;
+        }
+        .table-responsive {
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        .trend-up { color: #28a745; }
+        .trend-down { color: #dc3545; }
+        .trend-neutral { color: #6c757d; }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <div class="dashboard-header">
+        <div class="container">
+            <div class="row align-items-center">
+                <div class="col-md-8">
+                    <h1><i class="fas fa-chart-line me-3"></i>Test Execution Dashboard</h1>
+                    <p class="mb-0">Real-time insights into your automation testing performance</p>
+                </div>
+                <div class="col-md-4 text-end">
+                    <button class="btn btn-light me-2" onclick="refreshDashboard()">
+                        <i class="fas fa-sync-alt"></i> Refresh
+                    </button>
+                    <button class="btn btn-outline-light" onclick="exportData()">
+                        <i class="fas fa-download"></i> Export
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container-fluid mt-4">
+        <!-- Loading Spinner -->
+        <div class="loading-spinner text-center">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-2">Loading dashboard data...</p>
+        </div>
+
+        <!-- Error Message -->
+        <div class="error-message alert alert-danger" role="alert">
+            <i class="fas fa-exclamation-triangle me-2"></i>
+            <span id="error-text">Failed to load dashboard data</span>
+        </div>
+
+        <!-- Filters Section -->
+        <div class="filter-section">
+            <div class="row">
+                <div class="col-md-2">
+                    <label for="dateFrom" class="form-label">From Date</label>
+                    <input type="date" class="form-control" id="dateFrom">
+                </div>
+                <div class="col-md-2">
+                    <label for="dateTo" class="form-label">To Date</label>
+                    <input type="date" class="form-control" id="dateTo">
+                </div>
+                <div class="col-md-2">
+                    <label for="projectFilter" class="form-label">Project</label>
+                    <select class="form-select" id="projectFilter">
+                        <option value="">All Projects</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label for="squadFilter" class="form-label">Squad</label>
+                    <select class="form-select" id="squadFilter">
+                        <option value="">All Squads</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label for="environmentFilter" class="form-label">Environment</label>
+                    <select class="form-select" id="environmentFilter">
+                        <option value="">All Environments</option>
+                        <option value="dev">Development</option>
+                        <option value="qa">QA</option>
+                        <option value="stage">Staging</option>
+                        <option value="prod">Production</option>
+                    </select>
+                </div>
+                <div class="col-md-2 d-flex align-items-end">
+                    <button class="btn btn-primary w-100" onclick="applyFilters()">
+                        <i class="fas fa-filter"></i> Apply Filters
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Metrics Cards -->
+        <div class="row mb-4" id="metricsCards">
+            <div class="col-md-3">
+                <div class="card metric-card bg-primary text-white">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <h6 class="card-title">Total Executions</h6>
+                                <h2 id="totalExecutions">0</h2>
+                                <small id="executionsTrend" class="trend-neutral">
+                                    <i class="fas fa-minus"></i> No change
+                                </small>
+                            </div>
+                            <div class="align-self-center">
+                                <i class="fas fa-play-circle fa-2x opacity-75"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card metric-card bg-success text-white">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <h6 class="card-title">Total Tests</h6>
+                                <h2 id="totalTests">0</h2>
+                                <small id="testsTrend" class="trend-neutral">
+                                    <i class="fas fa-minus"></i> No change
+                                </small>
+                            </div>
+                            <div class="align-self-center">
+                                <i class="fas fa-vial fa-2x opacity-75"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card metric-card bg-info text-white">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <h6 class="card-title">Pass Rate</h6>
+                                <h2 id="overallPassRate">0%</h2>
+                                <small id="passRateTrend" class="trend-neutral">
+                                    <i class="fas fa-minus"></i> No change
+                                </small>
+                            </div>
+                            <div class="align-self-center">
+                                <i class="fas fa-check-circle fa-2x opacity-75"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card metric-card bg-warning text-white">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <h6 class="card-title">Avg Duration</h6>
+                                <h2 id="avgExecutionTime">0s</h2>
+                                <small id="durationTrend" class="trend-neutral">
+                                    <i class="fas fa-minus"></i> No change
+                                </small>
+                            </div>
+                            <div class="align-self-center">
+                                <i class="fas fa-clock fa-2x opacity-75"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Charts Row -->
+        <div class="row mb-4">
+            <div class="col-md-8">
+                <div class="card">
+                    <div class="card-header">
+                        <h5><i class="fas fa-chart-line me-2"></i>Execution Trends (Last 30 Days)</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="chart-container">
+                            <canvas id="trendsChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h5><i class="fas fa-chart-pie me-2"></i>Pass/Fail Distribution</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="chart-container">
+                            <canvas id="passFailChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Environment Stats and Error Distribution -->
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5><i class="fas fa-server me-2"></i>Environment Statistics</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="chart-container">
+                            <canvas id="environmentChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5><i class="fas fa-bug me-2"></i>Error Distribution</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="chart-container">
+                            <canvas id="errorChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Top Failing Tests -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5><i class="fas fa-exclamation-triangle me-2"></i>Top Failing Tests</h5>
+                        <button class="btn btn-sm btn-outline-primary" onclick="exportFailingTests()">
+                            <i class="fas fa-download"></i> Export
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover" id="failingTestsTable">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th>Test Name</th>
+                                        <th>Failure Count</th>
+                                        <th>Failure Rate</th>
+                                        <th>Last Failed</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="failingTestsBody">
+                                    <tr>
+                                        <td colspan="5" class="text-center text-muted">No data available</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Executions -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5><i class="fas fa-history me-2"></i>Recent Executions</h5>
+                        <div>
+                            <button class="btn btn-sm btn-outline-secondary me-2" onclick="toggleAutoRefresh()">
+                                <i class="fas fa-sync-alt"></i> <span id="autoRefreshText">Enable Auto-refresh</span>
+                            </button>
+                            <button class="btn btn-sm btn-outline-primary" onclick="exportExecutions()">
+                                <i class="fas fa-download"></i> Export
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover" id="executionsTable">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th>Execution ID</th>
+                                        <th>Project</th>
+                                        <th>Environment</th>
+                                        <th>Start Time</th>
+                                        <th>Duration</th>
+                                        <th>Tests</th>
+                                        <th>Pass Rate</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="executionsBody">
+                                    <tr>
+                                        <td colspan="9" class="text-center text-muted">No data available</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <nav aria-label="Executions pagination">
+                            <ul class="pagination justify-content-center" id="executionsPagination">
+                                <!-- Pagination will be generated dynamically -->
+                            </ul>
+                        </nav>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Export Modal -->
+    <div class="modal fade" id="exportModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Export Data</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="exportFormat" class="form-label">Export Format</label>
+                        <select class="form-select" id="exportFormat">
+                            <option value="excel">Excel (.xlsx)</option>
+                            <option value="csv">CSV (.csv)</option>
+                            <option value="json">JSON (.json)</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="exportData" class="form-label">Data to Export</label>
+                        <select class="form-select" id="exportData">
+                            <option value="executions">All Executions</option>
+                            <option value="failing-tests">Failing Tests</option>
+                            <option value="summary">Summary Report</option>
+                        </select>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="includeFilters" checked>
+                        <label class="form-check-label" for="includeFilters">
+                            Apply current filters to export
+                        </label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" onclick="performExport()">
+                        <i class="fas fa-download"></i> Export
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="js/dashboard.js"></script>
+</body>
+</html>

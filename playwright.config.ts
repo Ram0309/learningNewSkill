@@ -1,273 +1,264 @@
 import { defineConfig, devices } from '@playwright/test';
-import { config } from 'dotenv';
-
-// Load environment variables
-config();
+import path from 'path';
 
 /**
- * Unified Playwright Configuration
- * Supports Web, Mobile, API, Performance, Security, and Database testing
+ * Enterprise Playwright Configuration
+ * Supports cross-browser testing, mobile testing, and CI/CD integration
  */
 export default defineConfig({
-  // Test directory structure
+  // Test directory
   testDir: './tests',
   
-  // Global test configuration
-  fullyParallel: true,
+  // Global test timeout
+  timeout: 60000,
+  
+  // Expect timeout for assertions
+  expect: {
+    timeout: 10000,
+  },
+  
+  // Fail the build on CI if you accidentally left test.only in the source code
   forbidOnly: !!process.env.CI,
-  retries: process.env.CI ? 2 : 1,
-  workers: process.env.CI ? 4 : undefined,
+  
+  // Retry on CI only
+  retries: process.env.CI ? 2 : 0,
+  
+  // Opt out of parallel tests on CI
+  workers: process.env.CI ? 1 : undefined,
   
   // Reporter configuration
   reporter: [
-    ['html', { outputFolder: 'test-results/html-report' }],
-    ['json', { outputFile: 'test-results/results.json' }],
-    ['junit', { outputFile: 'test-results/junit.xml' }],
-    ['allure-playwright', { 
-      detail: true, 
-      outputFolder: 'allure-results',
-      suiteTitle: false 
+    ['html', { 
+      outputFolder: 'playwright-report',
+      open: process.env.CI ? 'never' : 'on-failure'
     }],
-    ['./src/reporters/custom-reporter.ts'],
-    ['./src/reporters/slack-reporter.ts'],
-    ['./src/reporters/analytics-reporter.ts']
+    ['json', { 
+      outputFile: 'test-results/results.json' 
+    }],
+    ['junit', { 
+      outputFile: 'test-results/junit-results.xml' 
+    }],
+    ['allure-playwright', {
+      detail: true,
+      outputFolder: 'allure-results',
+      suiteTitle: false,
+    }],
+    ['line'],
+    ...(process.env.CI ? [['github']] : [])
   ],
 
-  // Global test settings
+  // Global setup and teardown
+  globalSetup: require.resolve('./tests/global-setup.ts'),
+  globalTeardown: require.resolve('./tests/global-teardown.ts'),
+
+  // Shared settings for all projects
   use: {
-    // Base URL for web tests
-    baseURL: process.env.BASE_URL || 'https://demo.playwright.dev',
+    // Base URL for all tests
+    baseURL: 'https://demowebshop.tricentis.com',
     
-    // API base URL
-    extraHTTPHeaders: {
-      'Accept': 'application/json',
-      'Content-Type': 'application/json',
-    },
-    
-    // Tracing and debugging
+    // Collect trace when retrying the failed test
     trace: 'on-first-retry',
-    screenshot: 'only-on-failure',
+    
+    // Record video on failure
     video: 'retain-on-failure',
     
-    // Timeouts
-    actionTimeout: 30000,
-    navigationTimeout: 60000,
+    // Take screenshot on failure
+    screenshot: 'only-on-failure',
+    
+    // Global test timeout
+    actionTimeout: 15000,
+    navigationTimeout: 30000,
+    
+    // Ignore HTTPS errors
+    ignoreHTTPSErrors: true,
+    
+    // Accept downloads
+    acceptDownloads: true,
     
     // Locale and timezone
     locale: 'en-US',
     timezoneId: 'America/New_York',
     
-    // Ignore HTTPS errors for testing
-    ignoreHTTPSErrors: true,
+    // Viewport size
+    viewport: { width: 1280, height: 720 },
     
-    // Custom test data
-    storageState: process.env.STORAGE_STATE,
-  },
-
-  // Test timeout
-  timeout: 120000,
-  expect: {
-    timeout: 10000,
-    toHaveScreenshot: { 
-      threshold: 0.2, 
-      mode: 'strict' 
+    // User agent
+    userAgent: 'Playwright-Enterprise-Test-Framework/1.0.0',
+    
+    // Extra HTTP headers
+    extraHTTPHeaders: {
+      'Accept-Language': 'en-US,en;q=0.9',
     },
-    toMatchSnapshot: { 
-      threshold: 0.2 
-    }
   },
 
-  // Project configurations for different test types and browsers
+  // Configure projects for major browsers
   projects: [
-    // Setup project for authentication
     {
-      name: 'setup',
-      testMatch: /.*\.setup\.ts/,
-      teardown: 'cleanup',
-    },
-    
-    // Cleanup project
-    {
-      name: 'cleanup',
-      testMatch: /.*\.cleanup\.ts/,
-    },
-
-    // ============ WEB UI TESTING ============
-    {
-      name: 'chromium-ui',
+      name: 'chromium',
       use: { 
         ...devices['Desktop Chrome'],
-        viewport: { width: 1920, height: 1080 },
+        // Chrome-specific settings
         launchOptions: {
-          args: ['--disable-web-security', '--disable-features=VizDisplayCompositor']
+          args: [
+            '--disable-web-security',
+            '--disable-features=VizDisplayCompositor',
+            '--disable-dev-shm-usage',
+            '--no-sandbox'
+          ]
         }
       },
-      testMatch: /.*\.(ui|web)\.spec\.ts/,
-      dependencies: ['setup'],
     },
 
     {
-      name: 'firefox-ui',
+      name: 'firefox',
       use: { 
         ...devices['Desktop Firefox'],
-        viewport: { width: 1920, height: 1080 }
+        // Firefox-specific settings
+        launchOptions: {
+          firefoxUserPrefs: {
+            'security.tls.insecure_fallback_hosts': 'localhost',
+            'network.stricttransportsecurity.preloadlist': false
+          }
+        }
       },
-      testMatch: /.*\.(ui|web)\.spec\.ts/,
-      dependencies: ['setup'],
     },
 
     {
-      name: 'webkit-ui',
+      name: 'webkit',
       use: { 
         ...devices['Desktop Safari'],
-        viewport: { width: 1920, height: 1080 }
+        // Safari-specific settings
       },
-      testMatch: /.*\.(ui|web)\.spec\.ts/,
-      dependencies: ['setup'],
     },
 
-    {
-      name: 'edge-ui',
-      use: { 
-        ...devices['Desktop Edge'],
-        viewport: { width: 1920, height: 1080 }
-      },
-      testMatch: /.*\.(ui|web)\.spec\.ts/,
-      dependencies: ['setup'],
-    },
-
-    // ============ MOBILE TESTING ============
+    // Mobile browsers
     {
       name: 'mobile-chrome',
       use: { 
         ...devices['Pixel 5'],
-        hasTouch: true,
-        isMobile: true,
       },
-      testMatch: /.*\.mobile\.spec\.ts/,
-      dependencies: ['setup'],
     },
-
     {
       name: 'mobile-safari',
       use: { 
-        ...devices['iPhone 13'],
-        hasTouch: true,
-        isMobile: true,
+        ...devices['iPhone 12'],
       },
-      testMatch: /.*\.mobile\.spec\.ts/,
-      dependencies: ['setup'],
     },
 
+    // Tablet browsers
     {
-      name: 'tablet-ipad',
+      name: 'tablet-chrome',
+      use: { 
+        ...devices['Galaxy Tab S4'],
+      },
+    },
+    {
+      name: 'tablet-safari',
       use: { 
         ...devices['iPad Pro'],
-        hasTouch: true,
       },
-      testMatch: /.*\.(mobile|tablet)\.spec\.ts/,
-      dependencies: ['setup'],
     },
 
-    // ============ API TESTING ============
+    // Microsoft Edge
     {
-      name: 'api-tests',
-      use: {
-        baseURL: process.env.API_BASE_URL || 'https://api.demo.playwright.dev',
-        extraHTTPHeaders: {
-          'Authorization': `Bearer ${process.env.API_TOKEN}`,
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
-        },
+      name: 'msedge',
+      use: { 
+        ...devices['Desktop Edge'], 
+        channel: 'msedge' 
       },
-      testMatch: /.*\.api\.spec\.ts/,
     },
 
-    // ============ DATABASE TESTING ============
+    // Google Chrome
     {
-      name: 'database-tests',
-      use: {
-        // Database connection will be handled in test setup
+      name: 'chrome',
+      use: { 
+        ...devices['Desktop Chrome'], 
+        channel: 'chrome' 
       },
-      testMatch: /.*\.database\.spec\.ts/,
     },
 
-    // ============ PERFORMANCE TESTING ============
+    // Branded browsers for enterprise testing
     {
-      name: 'performance-tests',
+      name: 'enterprise-chrome',
       use: {
         ...devices['Desktop Chrome'],
         launchOptions: {
-          args: ['--disable-web-security', '--no-sandbox']
+          args: [
+            '--disable-web-security',
+            '--disable-features=VizDisplayCompositor',
+            '--disable-dev-shm-usage',
+            '--no-sandbox',
+            '--disable-extensions',
+            '--disable-plugins',
+            '--disable-images'
+          ]
         }
       },
-      testMatch: /.*\.performance\.spec\.ts/,
-      timeout: 300000, // 5 minutes for performance tests
     },
 
-    // ============ SECURITY TESTING ============
+    // Headless mode for CI/CD
     {
-      name: 'security-tests',
+      name: 'headless-chromium',
       use: {
         ...devices['Desktop Chrome'],
-        ignoreHTTPSErrors: true,
+        headless: true,
       },
-      testMatch: /.*\.security\.spec\.ts/,
-      timeout: 180000, // 3 minutes for security tests
-    },
-
-    // ============ CROSS-BROWSER COMPATIBILITY ============
-    {
-      name: 'cross-browser',
-      use: { ...devices['Desktop Chrome'] },
-      testMatch: /.*\.cross-browser\.spec\.ts/,
-      dependencies: ['setup'],
-    },
-
-    // ============ ACCESSIBILITY TESTING ============
-    {
-      name: 'accessibility',
-      use: { 
-        ...devices['Desktop Chrome'],
-        // Enable accessibility tree
-        launchOptions: {
-          args: ['--force-renderer-accessibility']
-        }
-      },
-      testMatch: /.*\.accessibility\.spec\.ts/,
-      dependencies: ['setup'],
-    },
-
-    // ============ VISUAL REGRESSION TESTING ============
-    {
-      name: 'visual-regression',
-      use: { 
-        ...devices['Desktop Chrome'],
-        viewport: { width: 1920, height: 1080 },
-      },
-      testMatch: /.*\.visual\.spec\.ts/,
-      dependencies: ['setup'],
     },
   ],
 
-  // Web server configuration for local development
-  webServer: process.env.CI ? undefined : {
-    command: 'npm run start:test-server',
-    port: 3000,
-    reuseExistingServer: !process.env.CI,
-    timeout: 120000,
-  },
+  // Output directory for test artifacts
+  outputDir: 'test-results/',
 
-  // Global setup and teardown
-  globalSetup: require.resolve('./src/setup/global-setup.ts'),
-  globalTeardown: require.resolve('./src/setup/global-teardown.ts'),
+  // Web server configuration for local development
+  // webServer: process.env.CI ? undefined : {
+  //   command: 'npm run start:mock-server',
+  //   port: 3000,
+  //   reuseExistingServer: !process.env.CI,
+  //   timeout: 120000,
+  // },
 
   // Test metadata
   metadata: {
-    framework: 'Unified Automation Framework',
-    version: '1.0.0',
-    environment: process.env.TEST_ENVIRONMENT || 'local',
-    cloud: process.env.CLOUD_PROVIDER || 'local',
-    region: process.env.CLOUD_REGION || 'us-east-1',
+    'test-framework': 'Playwright',
+    'framework-version': '1.40.0',
+    'enterprise-features': [
+      'Cross-browser testing',
+      'Mobile testing',
+      'API testing',
+      'Performance testing',
+      'Security testing',
+      'Multi-tenant support',
+      'CI/CD integration'
+    ]
   },
+
+  // Test patterns
+  testMatch: [
+    '**/*.spec.ts',
+    '**/*.test.ts',
+    '**/*.e2e.ts'
+  ],
+
+  // Test ignore patterns
+  testIgnore: [
+    '**/node_modules/**',
+    '**/dist/**',
+    '**/build/**',
+    '**/.git/**'
+  ],
+
+  // Maximum failures before stopping
+  maxFailures: process.env.CI ? 10 : undefined,
+
+  // Update snapshots in non-CI environments
+  updateSnapshots: process.env.CI ? 'none' : 'missing',
+
+  // Preserve output on exit
+  preserveOutput: 'failures-only',
+
+  // Shard configuration for parallel execution
+  shard: process.env.SHARD ? {
+    current: parseInt(process.env.SHARD_INDEX || '1'),
+    total: parseInt(process.env.SHARD_TOTAL || '1')
+  } : undefined,
 });
